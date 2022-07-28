@@ -1,29 +1,21 @@
-import java.io.Serializable;
+import java.io.*;
 
 public class ChatMessage implements Serializable {
+    static final int WHOISIN = 0, MESSAGE = 1, LOGOUT = 2;
+    private int type;
     private String message;
 
-    private int type;
-
-    static final int WHOISIN = 0, MESSAGE = 1, LOGOUT = 2;
-
-    public ChatMessage() {
-    }
-
-    public ChatMessage(String message, int type) {
-        this.message = message;
+    // constructor
+    ChatMessage(int type, String message) {
         this.type = type;
+        this.message = message;
     }
 
-    public int getType() {
+    int getType() {
         return type;
     }
 
-    public String getMessage() {
+    String getMessage() {
         return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 }
