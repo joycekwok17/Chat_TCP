@@ -132,7 +132,7 @@ public class server {
         {
             String tocheck=w[1].substring(1);
 
-            message=w[0]+w[2];
+            message=w[0] + ": " + w[2];
             String messageLf = time + " " + message + "\n";
             boolean found = false;
 
@@ -251,15 +251,17 @@ public class server {
                 username = (String) sInput.readObject();
                 broadcast(notif + username + " has joined the chat room. " + notif);
 
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 display("Exception creating new Input/output Streams: " + e);
                 throw new RuntimeException(e);
 
-            } catch (ClassNotFoundException e) {
+            }
+            catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
-            date = new Date().toString() + "\n";
+            date = new Date() + "\n";
 
         }
 
@@ -307,7 +309,7 @@ public class server {
 
                     case ChatMessage.MESSAGE:
 
-                        boolean isConfirmed = broadcast(username + ":" + msg);
+                        boolean isConfirmed = broadcast(username + " " + msg);
 
                         if(!isConfirmed){
                             writeMsg(notif+ "Sorry, no such user exists" + notif);
