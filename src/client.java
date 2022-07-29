@@ -1,21 +1,30 @@
-import java.net.*;
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.Scanner;
 
-
-//The Client that can be run as a console
-public class client  {
-
-    // notification
+public class client {
     private String notif = " *** ";
 
-    // for I/O
-    private ObjectInputStream sInput;		// to read from the socket
-    private ObjectOutputStream sOutput;		// to write on the socket
-    private Socket socket;					// socket object
+    private ObjectInputStream sInput;
 
-    private String server, username;	// server and username
-    private int port;					//port
+    private ObjectOutputStream sOutput;
+
+    private Socket socket;
+
+    private int port;
+
+    private String username, server;
+
+    public client() {
+    }
+
+    public client(int port, String username, String server) {
+        this.port = port;
+        this.username = username;
+        this.server = server;
+    }
 
     public String getUsername() {
         return username;
@@ -26,117 +35,83 @@ public class client  {
     }
 
     /*
-     *  Constructor to set below things
-     *  server: the server address
-     *  port: the port number
-     *  username: the username
+     * display a msg to the console
      */
-
-    client(String server, int port, String username) {
-        this.server = server;
-        this.port = port;
-        this.username = username;
+    private void display(String msg) {
+        System.out.println(msg);
     }
 
-    /*
-     * To start the chat
-     */
-    public boolean start() {
-        // try to connect to the server
+    void sendMessage(ChatMessage msg){
         try {
-            socket = new Socket(server, port);
+            sOutput.writeObject(msg);
+        } catch (IOException e) {
+            display("Exception writing to server: "+e);
         }
-        // exception handler if it failed
-        catch(Exception ec) {
-            display("Error connecting to server:" + ec);
+    }
+
+    private void disconnect(){
+        try {
+            if(sInput != null){
+                sInput.close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        try{
+            if(sOutput != null){
+                sOutput.close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        try{
+            if(socket != null){
+                socket.close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean start(){
+
+        try{
+            socket = new Socket(server, port);
+        } catch (Exception e) {
+            display("Error when connecting to server: "+ e);
             return false;
         }
 
         String msg = "Connection accepted " + socket.getInetAddress() + ":" + socket.getPort();
         display(msg);
 
-        /* Creating both Data Stream */
-        try
-        {
-            sInput  = new ObjectInputStream(socket.getInputStream());
+        try{
+            sInput = new ObjectInputStream(socket.getInputStream());
             sOutput = new ObjectOutputStream(socket.getOutputStream());
-        }
-        catch (IOException eIO) {
-            display("Exception creating new Input/output Streams: " + eIO);
+            display("Created both data streams");
+        } catch (IOException e) {
+            display("Exception creating new Input/output Streams: " + e);
             return false;
         }
 
-        // creates the Thread to listen from the server
         new ListenFromServer().start();
-        // Send our username to the server this is the only message that we
-        // will send as a String. All other messages will be ChatMessage objects
-        try
-        {
+
+        try {
             sOutput.writeObject(username);
-        }
-        catch (IOException eIO) {
-            display("Exception doing login : " + eIO);
+        } catch (IOException e) {
+            display("Exception doing login : " + e);
             disconnect();
             return false;
         }
-        // success we inform the caller that it worked
+
         return true;
     }
 
-    /*
-     * To send a message to the console
-     */
-    private void display(String msg) {
-
-        System.out.println(msg);
-
-    }
-
-    /*
-     * To send a message to the server
-     */
-    void sendMessage(ChatMessage msg) {
-        try {
-            sOutput.writeObject(msg);
-        }
-        catch(IOException e) {
-            display("Exception writing to server: " + e);
-        }
-    }
-
-    /*
-     * When something goes wrong
-     * Close the Input/Output streams and disconnect
-     */
-    private void disconnect() {
-        try {
-            if(sInput != null) sInput.close();
-        }
-        catch(Exception e) {}
-        try {
-            if(sOutput != null) sOutput.close();
-        }
-        catch(Exception e) {}
-        try{
-            if(socket != null) socket.close();
-        }
-        catch(Exception e) {}
-
-    }
-    /*
-     * To start the Client in console mode use one of the following command
-     * > java Client
-     * > java Client username
-     * > java Client username portNumber
-     * > java Client username portNumber serverAddress
-     * at the console prompt
-     * If the portNumber is not specified 1500 is used
-     * If the serverAddress is not specified "localHost" is used
-     * If the username is not specified "Anonymous" is used
-     */
     public static void main(String[] args) {
         // default values if not entered
-        int portNumber =1500;
+        int portNumber = 1500;
         String serverAddress ="localhost";
         String userName = "Anonymous";
         Scanner scan = new Scanner(System.in);
@@ -144,7 +119,6 @@ public class client  {
         System.out.println("Enter the username: ");
         userName = scan.nextLine();
 
-        // different case according to the length of the arguments.
         switch(args.length) {
             case 3:
                 // for > javac Client username portNumber serverAddr
@@ -170,65 +144,68 @@ public class client  {
                 System.out.println("Usage is: > java Client [username] [portNumber] [serverAddress]");
                 return;
         }
-        // create the Client object
-        client client = new client(serverAddress, portNumber, userName);
-        // try to connect to the server and return if not connected
-        if(!client.start())
-            return;
+
+        client client = new client(portNumber, userName, serverAddress);
+        // try to connect to server, return if not connected
+        if(!client.start()) return;
 
         System.out.println("\nHello.! Welcome to the chatroom.");
         System.out.println("Instructions:");
         System.out.println("1. Simply type the message to send broadcast to all active clients");
-        System.out.println("2. Type '@username<space>yourmessage' without quotes to send message to desired client");
+        System.out.println("2. Type '@username<space>your message' without quotes to send message to desired client");
         System.out.println("3. Type 'WHOISIN' without quotes to see list of active clients");
         System.out.println("4. Type 'LOGOUT' without quotes to logoff from server");
 
         // infinite loop to get the input from the user
         while(true) {
             System.out.print("> ");
+
             // read message from user
             String msg = scan.nextLine();
+
             // logout if message is LOGOUT
             if(msg.equalsIgnoreCase("LOGOUT")) {
-                client.sendMessage(new ChatMessage(ChatMessage.LOGOUT, ""));
+                client.sendMessage(new ChatMessage("",ChatMessage.LOGOUT));
                 break;
             }
             // message to check who are present in chatroom
             else if(msg.equalsIgnoreCase("WHOISIN")) {
-                client.sendMessage(new ChatMessage(ChatMessage.WHOISIN, ""));
+                client.sendMessage(new ChatMessage("",ChatMessage.WHOISIN));
+                break;
             }
             // regular text message
             else {
-                client.sendMessage(new ChatMessage(ChatMessage.MESSAGE, msg));
+                client.sendMessage(new ChatMessage(msg,ChatMessage.MESSAGE));
             }
         }
+        //****Missing***/
         // close resource
         scan.close();
         // client completed its job. disconnect client.
         client.disconnect();
     }
 
-    /*
-     * a class that waits for the message from the server
-     */
-    class ListenFromServer extends Thread {
 
+    // a class that waits for msg from server
+    class ListenFromServer extends Thread{
+
+        @Override
         public void run() {
-            while(true) {
+
+            while (true) {
+
                 try {
-                    // read the message form the input datastream
                     String msg = (String) sInput.readObject();
-                    // print the message
-                    System.out.println(msg);
-                    System.out.print("> ");
-                }
-                catch(IOException e) {
-                    display(notif + "Server has closed the connection: " + e + notif);
+                    display(msg);
+                    display(">");
+                } catch (IOException e) {
+                    display(notif + "Server has closed the connection: "+e+notif);
                     break;
-                }
-                catch(ClassNotFoundException e2) {
+              } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
     }
+
 }
